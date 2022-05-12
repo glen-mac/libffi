@@ -314,8 +314,16 @@ ffi_trampoline_table_alloc (void)
   trampoline_page_template &= ~1UL;
 #endif
 
+cur_prot = VM_PROT_READ | VM_PROT_EXECUTE;
+max_prot = VM_PROT_READ | VM_PROT_EXECUTE;
+
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page_template:\n" );
     get_region_protection( trampoline_page_template );
+
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "initial vm_protect" );
+    ktt = vm_protect ( mach_task_self(), trampoline_page, PAGE_MAX_SIZE, FALSE, VM_PROT_READ | VM_PROT_EXECUTE );
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ret EGG: %s", mach_error_string( ktt )  );
+    get_region_protection( trampoline_page );
 
   kt = vm_remap (mach_task_self (), &trampoline_page, PAGE_MAX_SIZE, 0x0,
 		 VM_FLAGS_OVERWRITE, mach_task_self (), trampoline_page_template,
@@ -334,8 +342,6 @@ ffi_trampoline_table_alloc (void)
     get_region_protection( trampoline_page );
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ret EGG: %s", mach_error_string( ktt )  );
 
-cur_prot = VM_PROT_READ | VM_PROT_EXECUTE;
-max_prot = VM_PROT_READ | VM_PROT_EXECUTE;
 
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "mach_vm_protect:\n" );
     ktt = vm_remap (mach_task_self(), &trampoline_page, PAGE_MAX_SIZE, 0,
