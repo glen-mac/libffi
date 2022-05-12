@@ -317,10 +317,17 @@ ffi_trampoline_table_alloc (void)
 cur_prot = VM_PROT_READ | VM_PROT_EXECUTE;
 max_prot = VM_PROT_READ | VM_PROT_EXECUTE;
 
+    // at this point trampoline_page is rw-/rwx and the template is r-x/rwx
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page_template:\n" );
     get_region_protection( trampoline_page_template );
 
-    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "initial vm_protect to set R-X/RWX" );
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "mach_vm_write from template to page\n" );
+    ktt = mach_vm_write(mach_task_self(), trampoline_page, trampoline_page_template, PAGE_MAX_SIZE);
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ret EGG: %s", mach_error_string( ktt )  );
+    get_region_protection( trampoline_page );
+
+    // at this point trampoline_page is r-x/rwx and the template is r-x/rwx
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "initial vm_protect to set R-X/RWX\n" );
     ktt = vm_protect ( mach_task_self(), trampoline_page, PAGE_MAX_SIZE, FALSE, VM_PROT_READ | VM_PROT_EXECUTE );
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ret EGG: %s", mach_error_string( ktt )  );
     get_region_protection( trampoline_page );
@@ -343,12 +350,12 @@ max_prot = VM_PROT_READ | VM_PROT_EXECUTE;
     /*os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ret EGG: %s", mach_error_string( ktt )  );*/
 
 
-    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "mach_vm_remap from template to page\n" );
-    ktt = vm_remap (mach_task_self(), &trampoline_page, PAGE_MAX_SIZE, PAGE_MASK,
-        VM_FLAGS_OVERWRITE | VM_FLAGS_FIXED, mach_task_self(), trampoline_page_template, FALSE,
-        &cur_prot, &max_prot, VM_INHERIT_NONE );
-    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ret EGG: %s", mach_error_string( ktt )  );
-    get_region_protection( trampoline_page );
+    // at this point trampoline_page SHOULD be r-x/rwx and the template is r-x/rwx
+    /*os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "mach_vm_remap from template to page\n" );*/
+    /*ktt = vm_remap (mach_task_self(), &trampoline_page, PAGE_MAX_SIZE, PAGE_MASK,*/
+        /*VM_FLAGS_OVERWRITE | VM_FLAGS_FIXED, mach_task_self(), trampoline_page_template, FALSE,*/
+        /*&cur_prot, &max_prot, VM_INHERIT_SHARE );*/
+    /*os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ret EGG: %s", mach_error_string( ktt )  );*/
 
     /*if (ktt == KERN_NO_SPACE)*/
     /*{*/
