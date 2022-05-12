@@ -36,6 +36,63 @@
 #include <ffi_common.h>
 #include <stdlib.h>
 
+#include <mach/mach.h>
+
+extern
+kern_return_t mach_vm_region_recurse
+(
+	vm_map_read_t target_task,
+	mach_vm_address_t *address,
+	mach_vm_size_t *size,
+	natural_t *nesting_depth,
+	vm_region_recurse_info_t info,
+	mach_msg_type_number_t *infoCnt
+);
+
+#include <os/log.h>
+#include <sys/mman.h>
+static
+ void
+    get_region_protection
+    (
+      vm_address_t                   Address
+    )
+{
+    kern_return_t                            kStatus           = KERN_FAILURE;
+    mach_vm_address_t                        regionBase        = (mach_vm_address_t) Address;
+    mach_vm_size_t                           regionSize        = 0;
+    natural_t                                nestingLevel      = 0;
+    vm_region_submap_short_info_data_64_t    regionInfo        = { 0 };
+    mach_msg_type_number_t                   regionInfoSize    = VM_REGION_SUBMAP_INFO_COUNT_64;
+
+    kStatus = mach_vm_region_recurse( mach_task_self( ),
+                                      &regionBase,
+                                      &regionSize,
+                                      &nestingLevel,
+                                      (vm_region_recurse_info_t) &regionInfo,
+                                      &regionInfoSize );
+    if( KERN_SUCCESS == kStatus )
+    {
+        vm_prot_t Protection = regionInfo.protection;
+        vm_prot_t ProtectionMax = regionInfo.max_protection;
+
+        os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "region @ 0x%llx has perms: %c%c%c/%c%c%c\n",
+                         regionBase,
+                         (PROT_READ & Protection)  ? 'r' : '-',
+                         (PROT_WRITE & Protection) ? 'w' : '-',
+                         (PROT_EXEC & Protection) ?  'x' : '-',
+                         (PROT_READ & ProtectionMax)  ? 'r' : '-',
+                         (PROT_WRITE & ProtectionMax) ? 'w' : '-',
+                         (PROT_EXEC & ProtectionMax) ?  'x' : '-'
+        );
+    }
+    else
+    {
+        os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ERROR mach_vm_region_recurse failed with result 0x%x ( %s )\n",
+                    kStatus, mach_error_string( kStatus ) );
+    }
+}
+
 static void
 on_allocate (void *base_address, size_t size)
 {
@@ -245,6 +302,9 @@ ffi_trampoline_table_alloc (void)
   if (kt != KERN_SUCCESS)
     return NULL;
 
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of config page:\n" );
+    get_region_protection( config_page );
+
   /* Remap the trampoline table on top of the placeholder page */
   trampoline_page = config_page + PAGE_MAX_SIZE;
   trampoline_page_template = (vm_address_t)&ffi_closure_trampoline_table_page;
@@ -252,6 +312,10 @@ ffi_trampoline_table_alloc (void)
   /* ffi_closure_trampoline_table_page can be thumb-biased on some ARM archs */
   trampoline_page_template &= ~1UL;
 #endif
+
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page_template:\n" );
+    get_region_protection( trampoline_page_template );
+
   kt = vm_remap (mach_task_self (), &trampoline_page, PAGE_MAX_SIZE, 0x0,
 		 VM_FLAGS_OVERWRITE, mach_task_self (), trampoline_page_template,
 		 FALSE, &cur_prot, &max_prot, VM_INHERIT_SHARE);
@@ -260,6 +324,15 @@ ffi_trampoline_table_alloc (void)
       vm_deallocate (mach_task_self (), config_page, PAGE_MAX_SIZE * 2);
       return NULL;
     }
+
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page:\n" );
+    get_region_protection( trampoline_page );
+
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page:\n" );
+    ( void ) vm_protect( mach_task_self(), trampoline_page, PAGE_MAX_SIZE, false, VM_PROT_READ | VM_PROT_EXECUTE );
+
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page (again):\n" );
+    get_region_protection( trampoline_page );
 
   mem_callbacks.on_allocate ((void *) config_page, PAGE_MAX_SIZE * 2);
 
