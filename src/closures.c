@@ -290,8 +290,8 @@ ffi_trampoline_table_alloc (void)
   vm_address_t config_page;
   vm_address_t trampoline_page;
   vm_address_t trampoline_page_template;
-  vm_prot_t cur_prot;
-  vm_prot_t max_prot;
+  /*vm_prot_t cur_prot;*/
+  /*vm_prot_t max_prot;*/
   kern_return_t kt;
   kern_return_t ktt;
   uint16_t i;
@@ -322,7 +322,7 @@ max_prot = VM_PROT_READ | VM_PROT_EXECUTE;
     get_region_protection( trampoline_page_template );
 
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "mach_vm_write from template to page\n" );
-    ktt = mach_vm_write(mach_task_self(), trampoline_page, trampoline_page_template, PAGE_MAX_SIZE);
+    ktt = vm_write(mach_task_self(), trampoline_page, trampoline_page_template, PAGE_MAX_SIZE);
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ret EGG: %s", mach_error_string( ktt )  );
     get_region_protection( trampoline_page );
 
