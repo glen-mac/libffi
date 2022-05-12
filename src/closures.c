@@ -76,8 +76,8 @@ static
         vm_prot_t Protection = regionInfo.protection;
         vm_prot_t ProtectionMax = regionInfo.max_protection;
 
-        os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "region @ 0x%llx has perms: %c%c%c/%c%c%c\n",
-                         regionBase,
+        os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "region @ %p has perms: %c%c%c/%c%c%c\n",
+                         (void*)regionBase,
                          (PROT_READ & Protection)  ? 'r' : '-',
                          (PROT_WRITE & Protection) ? 'w' : '-',
                          (PROT_EXEC & Protection) ?  'x' : '-',
@@ -293,6 +293,7 @@ ffi_trampoline_table_alloc (void)
   vm_prot_t cur_prot;
   vm_prot_t max_prot;
   kern_return_t kt;
+  kern_return_t ktt;
   uint16_t i;
 
   /* Allocate two pages -- a config page and a placeholder page */
@@ -328,8 +329,30 @@ ffi_trampoline_table_alloc (void)
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page:\n" );
     get_region_protection( trampoline_page );
 
-    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page:\n" );
-    ( void ) vm_protect( mach_task_self(), trampoline_page, PAGE_MAX_SIZE, false, VM_PROT_READ | VM_PROT_EXECUTE );
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "now doing mach_vm_protect:\n" );
+
+    ktt = vm_protect ( mach_task_self(), trampoline_page, PAGE_MAX_SIZE, FALSE, VM_PROT_READ | VM_PROT_EXECUTE | VM_PROT_COPY);
+    os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "ret EGG: %s", mach_error_string( ktt )  );
+
+
+    /*kr = mach_vm_remap (self_task, &address, source_size, 0,*/
+        /*VM_FLAGS_OVERWRITE | VM_FLAGS_FIXED, self_task, source_address, TRUE,*/
+        /*&cur_protection, &max_protection, VM_INHERIT_COPY);*/
+
+    /*if (kr == KERN_NO_SPACE)*/
+    /*{*/
+      /*[> Get rid of permanent map entries in target range. <]*/
+      /*mach_vm_protect (self_task, address, source_size, FALSE,*/
+          /*VM_PROT_READ | VM_PROT_WRITE | VM_PROT_COPY);*/
+
+      /*kr = mach_vm_remap (self_task, &address, source_size, 0,*/
+          /*VM_FLAGS_OVERWRITE | VM_FLAGS_FIXED, self_task, source_address, TRUE,*/
+          /*&cur_protection, &max_protection, VM_INHERIT_COPY);*/
+
+      /*mach_vm_protect (self_task, address, source_size, FALSE,*/
+          /*VM_PROT_READ | VM_PROT_EXECUTE);*/
+    /*}*/
+
 
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page (again):\n" );
     get_region_protection( trampoline_page );
