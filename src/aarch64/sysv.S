@@ -280,7 +280,7 @@ CNAME(ffi_closure_SYSV):
 
 	/* Load the return value as directed.  */
 #if FFI_EXEC_TRAMPOLINE_TABLE && defined(__MACH__) && defined(HAVE_PTRAUTH)
-	autiza	x1
+	;autiza	x1
 #endif
 	adr	x1, 0f
 	and	w0, w0, #AARCH64_RET_MASK
