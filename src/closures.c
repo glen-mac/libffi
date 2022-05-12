@@ -314,8 +314,8 @@ ffi_trampoline_table_alloc (void)
   trampoline_page_template &= ~1UL;
 #endif
 
-cur_prot = VM_PROT_READ | VM_PROT_EXECUTE;
-max_prot = VM_PROT_READ | VM_PROT_EXECUTE;
+/*cur_prot = VM_PROT_READ | VM_PROT_EXECUTE;*/
+/*max_prot = VM_PROT_READ | VM_PROT_EXECUTE;*/
 
     // at this point trampoline_page is rw-/rwx and the template is r-x/rwx
     os_log_with_type(OS_LOG_DEFAULT, OS_LOG_TYPE_ERROR, "getting perms of trampoline_page_template:\n" );
